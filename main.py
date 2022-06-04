@@ -186,9 +186,7 @@ def train_classifier(docs,file_title, train_title, test_title, classifier):
 
 
 
-"""cross validation used for search best  hiper params
-n_jobs number of jobs run in parallel
-verbose controls the number of"""
+
 
 
 
@@ -203,9 +201,11 @@ def save_vectorizer_to_file(file_title, vectorizer):
 def _save_to_file(file_title, obj):
     clf_filename = file_title
     pickle.dump(obj, open(clf_filename, 'wb'))
-    pickle.dump(vectorizer, open(file_title, 'wb'))
 
 
+"""cross validation used for search best  hiper params
+n_jobs number of jobs run in parallel
+verbose controls the number of"""
 def get_MNB_with_theBest_hiperParams(cross_validation_k, X_train, y_train):
 
     vectorizer = CountVectorizer(stop_words='english',
@@ -275,10 +275,10 @@ if __name__ == '__main__':
     convert_to_data_frame(books)
     print_frequency_dist(books)
     X_train, X_test, y_train, y_test = get_splits(books)
-    best_estimatorSVM, vectorizer = get_SVM_with_theBest_hiperParams( cross_validation_k=3, X_train=X_train, y_train=y_train)
+    best_estimatorSVM, vectorizer = get_SVM_with_theBest_hiperParams( cross_validation_k=10, X_train=X_train, y_train=y_train)
     evaluate_classifier_test("Evaluation of SVM classifier", best_estimatorSVM, vectorizer, X_test, y_test)
 
-    bestEstimatorMNB, vectorizer = get_MNB_with_theBest_hiperParams(cross_validation_k=3,  X_train=X_train, y_train=y_train)
+    bestEstimatorMNB, vectorizer = get_MNB_with_theBest_hiperParams(cross_validation_k=10,  X_train=X_train, y_train=y_train)
     evaluate_classifier_test("Evaluation of MNB classifier", bestEstimatorMNB, vectorizer, X_test, y_test)
 
 
