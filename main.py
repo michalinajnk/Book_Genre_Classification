@@ -179,23 +179,56 @@ def train_classifier(docs,file_title, train_title, test_title, classifier):
     dtm = vectorizer.fit_transform(X_train)
 
     fitted_classifier = classifier.fit(dtm, y_train)
+    evaluate_classifier_train(fitted_classifier, X_train, y_train, cross_validation=5)
 
-    evaluate_classifier_train(train_title, fitted_classifier, vectorizer, X_train, y_train)
 
-
-    clf_filename = file_title
-    pickle.dump(fitted_classifier, open(clf_filename, 'wb'))
-
-    vec_filename = 'count_vectorizer.pkl'
-    pickle.dump(vectorizer, open(vec_filename, 'wb'))
     return fitted_classifier, vectorizer, X_test, y_test
 
 
-#cross validation used for search best  hiper params
-#n_jobs number of jobs run in parallel
-#verbose controls the number of
-def get_SVM_with_theBest_hiperParams(books, cross_validation_k):
-    X_train, X_test, y_train, y_test = get_splits(books)
+
+"""cross validation used for search best  hiper params
+n_jobs number of jobs run in parallel
+verbose controls the number of"""
+
+
+
+
+def save_estimator_to_file(file_title, classifier):
+    _save_to_file(file_title, classifier)
+
+def save_vectorizer_to_file(file_title, vectorizer):
+    _save_to_file(file_title, vectorizer)
+
+
+def _save_to_file(file_title, obj):
+    clf_filename = file_title
+    pickle.dump(obj, open(clf_filename, 'wb'))
+    pickle.dump(vectorizer, open(file_title, 'wb'))
+
+
+def get_MNB_with_theBest_hiperParams(cross_validation_k, X_train, y_train):
+
+    vectorizer = CountVectorizer(stop_words='english',
+                                 ngram_range=(1, 2),
+                                 min_df=3, analyzer='word')
+
+    dtm = vectorizer.fit_transform(X_train)
+
+    mnb_model = MultinomialNB()
+    param_grid = {'alpha': [0.00001, 0.0001, 0.001, 0.1, 1, 10, 100, 1000]}
+
+    rt_Grid = RandomizedSearchCV(estimator=mnb_model, param_distributions=param_grid, cv=cross_validation_k, verbose=3, n_jobs=4)
+    rt_Grid.fit(dtm, y_train)
+    print("BEST PARAMS FOR MultinomialNB ARE: ")
+    print(rt_Grid.best_params_)
+
+    save_estimator_to_file('naive_bayes_classifier.pkl', rt_Grid.best_estimator_)
+    save_vectorizer_to_file('count_vectorizer.pkl', vectorizer)
+
+    return rt_Grid.best_estimator_, vectorizer
+
+
+def get_SVM_with_theBest_hiperParams(cross_validation_k, X_train, y_train):
 
     vectorizer = CountVectorizer(stop_words='english',
                                  ngram_range=(1, 2),
@@ -211,26 +244,11 @@ def get_SVM_with_theBest_hiperParams(books, cross_validation_k):
     rt_Grid.fit(dtm, y_train)
     print("BEST PARAMS ARE: ")
     print(rt_Grid.best_params_)
-    return rt_Grid.best_estimator_, X_test, y_test, vectorizer
 
-def get_MNB_with_theBest_hiperParams(books, cross_validation_k):
-    X_train, X_test, y_train, y_test = get_splits(books)
+    save_estimator_to_file( 'support_vector_classifier.pkl', rt_Grid.best_estimator_)
+    save_vectorizer_to_file('count_vectorizer.pkl', vectorizer)
 
-    vectorizer = CountVectorizer(stop_words='english',
-                                 ngram_range=(1, 2),
-                                 min_df=3, analyzer='word')
-
-    dtm = vectorizer.fit_transform(X_train)
-
-    mnb_model = MultinomialNB()
-    param_grid = {'alpha': [0, 1, 2, 3, 4]}
-
-    rt_Grid = RandomizedSearchCV(estimator=mnb_model, param_distributions=param_grid, cv=cross_validation_k, verbose=3, n_jobs=4)
-    rt_Grid.fit(dtm, y_train)
-    print("BEST PARAMS FOR MultinomialNB ARE: ")
-    print(rt_Grid.best_params_)
-    return rt_Grid.best_estimator_, X_test, y_test, vectorizer
-
+    return rt_Grid.best_estimator_,vectorizer
 
 
 def classify(file_of_classifier, text):
@@ -242,9 +260,8 @@ def classify(file_of_classifier, text):
     vectorizer = pickle.load(open(vec_filename, 'rb'))
 
     y_pred = nb_clf.predict(vectorizer.transform([text]))
-
-
     print('This text is %s.' % (y_pred[0]))
+
 
 def convert_to_data_frame(books):
     df = pd.DataFrame(books, columns=['genre', 'text'])
@@ -257,11 +274,12 @@ if __name__ == '__main__':
     books = read_books_from_file()
     convert_to_data_frame(books)
     print_frequency_dist(books)
-    best_estimator, X_test, y_test, vectorizer = get_SVM_with_theBest_hiperParams(books, cross_validation_k=5)
-    evaluate_classifier_test("Evaluation of SVM classifier", best_estimator, vectorizer, X_test, y_test)
+    X_train, X_test, y_train, y_test = get_splits(books)
+    best_estimatorSVM, vectorizer = get_SVM_with_theBest_hiperParams( cross_validation_k=3, X_train=X_train, y_train=y_train)
+    evaluate_classifier_test("Evaluation of SVM classifier", best_estimatorSVM, vectorizer, X_test, y_test)
 
-    bestEstimatorMNB, X_test, y_test, vectorizer = get_MNB_with_theBest_hiperParams(books, cross_validation_k=5)
-    evaluate_classifier_test("Evaluation of MNB classifier", best_estimator, vectorizer, X_test, y_test)
+    bestEstimatorMNB, vectorizer = get_MNB_with_theBest_hiperParams(cross_validation_k=3,  X_train=X_train, y_train=y_train)
+    evaluate_classifier_test("Evaluation of MNB classifier", bestEstimatorMNB, vectorizer, X_test, y_test)
 
 
 
